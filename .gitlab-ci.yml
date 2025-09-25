@@ -1,0 +1,53 @@
+default:
+  tags:
+  - gitlab-runner-1
+
+stages:
+  - build_and_sonarqube_analysis
+  - nexus_artifact_upload
+  - docker_image_build
+  - deployment_to_gke_cluster
+
+build_job:
+  stage: build_and_sonarqube_analysis
+  before_script:
+    - export JAVA_HOME="/usr/lib/jvm/java-17-openjdk-17.0.16.0.8-2.el8.x86_64"
+    - export PATH="$PATH:$JAVA_HOME/bin:/opt/apache-maven/bin:/opt/node-v16.0.0/bin:/usr/local/bin"
+  script:
+    - echo "Building artifact..."
+    - mvn clean install sonar:sonar -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=600 -Dsonar.projectKey=bankapp -Dsonar.projectName='bankapp' -Dsonar.host.url=https://sonarqube.singhritesh85.com -Dsonar.login=$SONARQUBE_TOKEN
+  artifacts:
+    paths:
+      - target/*.jar
+
+upload_job:
+  stage: nexus_artifact_upload
+  script:
+    - echo "Uploading artifact to Nexus..."
+    - curl -v -u $NEXUS_USER:$NEXUS_PASSWORD --upload-file target/*.jar https://nexus.singhritesh85.com/repository/maven-snapshot/
+  dependencies:
+    - build_job
+
+docker_image:
+  stage: docker_image_build
+  before_script:
+    - export JAVA_HOME="/usr/lib/jvm/java-17-openjdk-17.0.16.0.8-2.el8.x86_64"
+    - export PATH="$PATH:$JAVA_HOME/bin:/opt/apache-maven/bin:/opt/node-v16.0.0/bin:/usr/local/bin"
+    - mvn clean install
+  script:
+    - docker build -t us-central1-docker.pkg.dev/wise-trainer-244916/bankapp-gcr-dev/dexter:latest -f Dockerfile-Project-1 .
+    - docker push us-central1-docker.pkg.dev/wise-trainer-244916/bankapp-gcr-dev/dexter:latest
+  dependencies:
+    - upload_job
+
+deployment_to_gke:
+  stage: deployment_to_gke_cluster
+  script:
+    - git clone https://deployment:$HELM_REPO_FOR_GKE_ACCESS_TOKEN@gitlab.singhritesh85.com/deployment/helm-repo-for-gke.git
+    - helm upgrade --install bankapp helm-repo-for-gke/folo --create-namespace --namespace=bankapp --set image.repository=us-central1-docker.pkg.dev/wise-trainer-244916/bankapp-gcr-dev/dexter,image.tag=latest,replicaCount=1,service.type=ClusterIP,service.port=80
+    - kubectl get pods -n bankapp
+  dependencies:
+    - docker_image
+
+  only:
+    - dev
