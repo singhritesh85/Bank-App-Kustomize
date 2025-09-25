@@ -44,7 +44,7 @@ deployment_to_gke:
   stage: deployment_to_gke_cluster
   script:
     - git clone https://dexter:$HELM_REPO_FOR_GKE_ACCESS_TOKEN@gitlab.singhritesh85.com/dexter/kustomize-bankapp.git
-    - kubectl apply -k overlay/bankapp
+    - kubectl apply -k kustomize-bankapp/overlay/bankapp
     - kubectl get pods -n bankapp
   dependencies:
     - docker_image
