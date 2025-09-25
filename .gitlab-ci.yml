@@ -44,7 +44,7 @@ deployment_to_gke:
   stage: deployment_to_gke_cluster
   script:
     - git clone https://deployment:$HELM_REPO_FOR_GKE_ACCESS_TOKEN@gitlab.singhritesh85.com/deployment/helm-repo-for-gke.git
-    - helm upgrade --install bankapp helm-repo-for-gke/folo --create-namespace --namespace=bankapp --set image.repository=us-central1-docker.pkg.dev/wise-trainer-244916/bankapp-gcr-dev/dexter,image.tag=latest,replicaCount=1,service.type=ClusterIP,service.port=80
+    - kubectl apply -k overlay/bankapp
     - kubectl get pods -n bankapp
   dependencies:
     - docker_image
