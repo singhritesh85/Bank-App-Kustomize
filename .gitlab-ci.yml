@@ -36,6 +36,8 @@ docker_image:
     - mvn clean install
   script:
     - docker build -t us-central1-docker.pkg.dev/wise-trainer-244916/bankapp-gcr-dev/dexter:1.0.1 -f Dockerfile-Project-1 .
+    - trivy image --exit-code 0 --severity MEDIUM,HIGH us-central1-docker.pkg.dev/wise-trainer-244916/bankapp-gcr-dev/dexter:1.0.1
+    - trivy image --exit-code 1 --severity CRITICAL us-central1-docker.pkg.dev/wise-trainer-244916/bankapp-gcr-dev/dexter:1.0.1
     - docker push us-central1-docker.pkg.dev/wise-trainer-244916/bankapp-gcr-dev/dexter:1.0.1
   dependencies:
     - upload_job
